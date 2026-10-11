@@ -1,0 +1,264 @@
+package com.flipkart.ldaudit;
+
+import android.app.AlertDialog;
+import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.text.InputType;
+import android.view.Gravity;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.webkit.CookieManager;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
+import android.widget.Toast;
+import androidx.appcompat.app.AppCompatActivity;
+
+public class MainActivity extends AppCompatActivity {
+
+    private WebView webView;
+    private LinearLayout trackingBoxLayout;
+    private EditText trackingInput;
+    private Button submitBtn, settingsBtn, auditDoneBtn;
+    private ProgressBar progressBar;
+    private SharedPreferences prefs;
+    private static final String PREF_URL_KEY = "office_internal_url";
+    private static final String DEFAULT_URL = "http://10.24.1.71";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        prefs = getSharedPreferences("LDAuditPrefs", MODE_PRIVATE);
+        String savedUrl = prefs.getString(PREF_URL_KEY, "");
+
+        // Main Screen Layout
+        RelativeLayout rootLayout = new RelativeLayout(this);
+
+        // 1. Always-Visible Top Tracking Bar
+        trackingBoxLayout = new LinearLayout(this);
+        trackingBoxLayout.setId(View.generateViewId());
+        trackingBoxLayout.setOrientation(LinearLayout.HORIZONTAL);
+        trackingBoxLayout.setBackgroundColor(Color.parseColor("#1E293B"));
+        trackingBoxLayout.setPadding(16, 16, 16, 16);
+        trackingBoxLayout.setGravity(Gravity.CENTER_VERTICAL);
+
+        trackingInput = new EditText(this);
+        trackingInput.setHint("Scan / Enter Tracking ID...");
+        trackingInput.setHintTextColor(Color.parseColor("#94A3B8"));
+        trackingInput.setTextColor(Color.WHITE);
+        trackingInput.setSingleLine(true);
+        trackingInput.setImeOptions(EditorInfo.IME_ACTION_GO);
+        trackingInput.setBackgroundColor(Color.parseColor("#334155"));
+        trackingInput.setPadding(24, 18, 24, 18);
+        LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+        inputParams.setMargins(0, 0, 12, 0);
+        trackingInput.setLayoutParams(inputParams);
+
+        submitBtn = new Button(this);
+        submitBtn.setText("GO");
+        submitBtn.setBackgroundColor(Color.parseColor("#2563EB"));
+        submitBtn.setTextColor(Color.WHITE);
+
+        settingsBtn = new Button(this);
+        settingsBtn.setText("⚙️ URL");
+        settingsBtn.setBackgroundColor(Color.parseColor("#475569"));
+        settingsBtn.setTextColor(Color.WHITE);
+        LinearLayout.LayoutParams setParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        setParams.setMargins(12, 0, 0, 0);
+        settingsBtn.setLayoutParams(setParams);
+
+        trackingBoxLayout.addView(trackingInput);
+        trackingBoxLayout.addView(submitBtn);
+        trackingBoxLayout.addView(settingsBtn);
+
+        RelativeLayout.LayoutParams topBarParams = new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+        topBarParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+        rootLayout.addView(trackingBoxLayout, topBarParams);
+
+        // 2. WebView for Office Internal Site & Apps Script
+        webView = new WebView(this);
+        RelativeLayout.LayoutParams webParams = new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT);
+        webParams.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
+        rootLayout.addView(webView, webParams);
+
+        // 3. Floating "Audit Done" Button (Visible only on Apps Script page)
+        auditDoneBtn = new Button(this);
+        auditDoneBtn.setText("✅ Audit Done (পরের ট্র্যাকিং আইডি দিন)");
+        auditDoneBtn.setBackgroundColor(Color.parseColor("#16A34A"));
+        auditDoneBtn.setTextColor(Color.WHITE);
+        auditDoneBtn.setPadding(36, 24, 36, 24);
+        auditDoneBtn.setVisibility(View.GONE);
+        RelativeLayout.LayoutParams doneBtnParams = new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+        doneBtnParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
+        doneBtnParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
+        doneBtnParams.setMargins(0, 0, 0, 40);
+        rootLayout.addView(auditDoneBtn, doneBtnParams);
+
+        // 4. ProgressBar
+        progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        RelativeLayout.LayoutParams progParams = new RelativeLayout.LayoutParams(
+                RelativeLayout.LayoutParams.MATCH_PARENT, 8);
+        progParams.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
+        rootLayout.addView(progressBar, progParams);
+
+        setContentView(rootLayout);
+        setupWebView();
+
+        // Listeners
+        submitBtn.setOnClickListener(v -> runBookmarkletScript());
+        trackingInput.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == EditorInfo.IME_ACTION_GO || 
+               (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                runBookmarkletScript();
+                return true;
+            }
+            return false;
+        });
+
+        settingsBtn.setOnClickListener(v -> showUrlDialog(false));
+
+        // Audit Done ক্লিক করলেই আবার অফিসের সাইট ও ট্র্যাকিং বক্স ফিরে আসবে
+        auditDoneBtn.setOnClickListener(v -> {
+            String officeUrl = prefs.getString(PREF_URL_KEY, DEFAULT_URL);
+            trackingBoxLayout.setVisibility(View.VISIBLE);
+            auditDoneBtn.setVisibility(View.GONE);
+            webView.loadUrl(officeUrl);
+            trackingInput.setText("");
+            trackingInput.requestFocus();
+        });
+
+        // প্রথমবার অ্যাপ খুললে অফিসের লিংক পেস্ট করার বক্স দেখাবে
+        if (savedUrl.isEmpty()) {
+            showUrlDialog(true);
+        } else {
+            webView.loadUrl(savedUrl);
+        }
+    }
+
+    private void setupWebView() {
+        WebSettings ws = webView.getSettings();
+        ws.setJavaScriptEnabled(true);
+        ws.setDomStorageEnabled(true);
+        ws.setDatabaseEnabled(true);
+        ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+
+        CookieManager cm = CookieManager.getInstance();
+        cm.setAcceptCookie(true);
+        cm.setAcceptThirdPartyCookies(webView, true);
+
+        webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onProgressChanged(WebView view, int newProgress) {
+                progressBar.setProgress(newProgress);
+                progressBar.setVisibility(newProgress == 100 ? View.GONE : View.VISIBLE);
+            }
+        });
+
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                updateVisibilityForUrl(url);
+            }
+        });
+    }
+
+    // Apps Script খুললে ট্র্যাকিং বক্স অটো-হাইড হবে, আর অফিসের পেজে থাকলে অটো-ভিজিবল হবে
+    private void updateVisibilityForUrl(String url) {
+        if (url != null && (url.contains("script.google.com") || url.contains("script.googleusercontent.com"))) {
+            trackingBoxLayout.setVisibility(View.GONE);
+            auditDoneBtn.setVisibility(View.VISIBLE);
+        } else {
+            trackingBoxLayout.setVisibility(View.VISIBLE);
+            auditDoneBtn.setVisibility(View.GONE);
+        }
+    }
+
+    // আপনার বুকমার্কলেটের হুবহু জাভাস্ক্রিপ্ট লজিক
+    private void runBookmarkletScript() {
+        String rawId = trackingInput.getText().toString().trim().toUpperCase();
+        if (rawId.isEmpty()) {
+            Toast.makeText(this, "অনুগ্রহ করে Tracking / Shipment ID দিন!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Toast.makeText(this, "Searching Shipment Details...", Toast.LENGTH_SHORT).show();
+
+        String jsCode = "(async function(){" +
+                "var id='" + rawId.replace("'", "") + "';" +
+                "var sId=id;" +
+                "try{" +
+                "var hdrs={'accept':'application/json','content-type':'application/json','x-facility-id':'ulub_bts'};" +
+                "var csrfTag=document.querySelector('meta[name=\"csrf-token\"]');" +
+                "var csrfCookie=document.cookie.match(/csrf-token=([^;]+)/);" +
+                "if(csrfTag)hdrs['csrf-token']=csrfTag.content;" +
+                "else if(csrfCookie)hdrs['csrf-token']=csrfCookie[1];" +
+                "if(!id.startsWith('S')){" +
+                "var d1=new Date();d1.setDate(d1.getDate()-60);" +
+                "var d2=new Date();d2.setDate(d2.getDate()+60);" +
+                "var postHdrs=Object.assign({},hdrs);" +
+                "postHdrs['x-search-type']='shipments';" +
+                "var payload={'range_filters':[{'type':'dispatch_by_date','from':d1.toISOString(),'to':d2.toISOString()},{'type':'updated_at','from':d1.toISOString(),'to':d2.toISOString()}],'sorting':{'sort_asc':true,'sorting_field':'dispatch_by_date'},'table_filters':{'tracking_id':id},'pagination':{'page':1,'page_size':10}};" +
+                "var sRes=await fetch('http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/search/shipments',{method:'POST',headers:postHdrs,body:JSON.stringify(payload),credentials:'include'});" +
+                "if(!sRes.ok)throw new Error('Tracking ID Search error (Make sure you are logged in)');" +
+                "var sData=await sRes.json();" +
+                "if(sData&&sData.data&&sData.data.shipments_list&&sData.data.shipments_list.length>0){sId=sData.data.shipments_list[0].shipment_id;}else{throw new Error('Tracking ID not found');}" +
+                "}" +
+                "var dRes=await fetch('http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/search/shipments/detail?shipment_id='+sId,{headers:hdrs,method:'GET',credentials:'include'});" +
+                "if(!dRes.ok)throw new Error('Details GET error');" +
+                "var dData=await dRes.json();" +
+                "var encodedData=encodeURIComponent(JSON.stringify(dData));" +
+                "var appScriptUrl='https://script.google.com/a/macros/flipkart.com/s/AKfycbzwaSjLDJIh9_GfsdKqZ3sBT2qlyl1hVQW5lqnGoyXTFE7CrRyVfky15eeYQlygU28I/exec';" +
+                "window.location.href=appScriptUrl+'?data='+encodedData;" +
+                "}catch(e){alert('Error: '+e.message);}" +
+                "})();";
+
+        webView.evaluateJavascript(jsCode, null);
+    }
+
+    // অফিসের ইন্টারনাল লিংক বসানোর পপআপ বক্স
+    private void showUrlDialog(boolean isFirstRun) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("অফিসের ইন্টারনাল লিংক (URL) দিন");
+        builder.setMessage("যে পেজটি সবসময় খোলা থাকবে তার লিংক এখানে পেস্ট করুন:");
+
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        input.setText(prefs.getString(PREF_URL_KEY, "http://10.24.1.71/"));
+        builder.setView(input);
+        builder.setCancelable(!isFirstRun);
+
+        builder.setPositiveButton("Save & Open", (dialog, which) -> {
+            String url = input.getText().toString().trim();
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                url = "http://" + url;
+            }
+            prefs.edit().putString(PREF_URL_KEY, url).apply();
+            webView.loadUrl(url);
+        });
+
+        if (!isFirstRun) {
+            builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
+        }
+        builder.show();
+    }
+
+    // ফোনের Back বাটন চাপলে অডিট পেজ থেকে সরাসরি অফিসের পেজে ফিরে আসবে
+    @Override
+    public void onBackPressed() {
+        String currentUrl = webView.getUrl();
+        if (currentUrl != null && (currentUrl.contains("script.google.com") || currentUrl.contains("script.googleusercontent.com"))) {
+            String officeUrl = prefs.getString(PREF_URL_KEY, DEFAULT_URL);
+            trackingBox
