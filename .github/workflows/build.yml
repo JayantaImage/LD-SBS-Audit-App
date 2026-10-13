@@ -14,23 +14,20 @@ jobs:
           rm -rf *
           mkdir -p app/src/main/java/com/flipkart/ldaudit
 
-          printf 'pluginManagement {\n  repositories {\n    google()\n    mavenCentral()\n    gradlePluginPortal()\n  }\n}\ndependencyResolutionManagement {\n  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)\n  repositories {\n    google()\n    mavenCentral()\n  }\n}\nrootProject.name = "LDSBSAudit"\ninclude ":app"\n' > settings.gradle
+          printf 'pluginManagement {\n  repositories {\n    google()\n    mavenCentral()\n    gradlePluginPortal()\n  }\n}\ndependencyResolutionManagement {\n  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)\n  repositories {\n    google()\n    mavenCentral()\n  }\n}\nrootProject.name = "LiveCoachingApp"\ninclude ":app"\n' > settings.gradle
 
           printf 'plugins {\n  id "com.android.application" version "8.2.0" apply false\n}\n' > build.gradle
 
-          printf 'plugins {\n  id "com.android.application"\n}\nandroid {\n  namespace "com.flipkart.ldaudit"\n  compileSdk 34\n  defaultConfig {\n    applicationId "com.flipkart.ldaudit"\n    minSdk 24\n    targetSdk 34\n    versionCode 1\n    versionName "1.0"\n  }\n  compileOptions {\n    sourceCompatibility JavaVersion.VERSION_17\n    targetCompatibility JavaVersion.VERSION_17\n  }\n}\n' > app/build.gradle
+          printf 'plugins {\n  id "com.android.application"\n}\nandroid {\n  namespace "com.flipkart.ldaudit"\n  compileSdk 34\n  defaultConfig {\n    applicationId "com.flipkart.ldaudit"\n    minSdk 24\n    targetSdk 34\n    versionCode 2\n    versionName "2.0"\n  }\n  compileOptions {\n    sourceCompatibility JavaVersion.VERSION_17\n    targetCompatibility JavaVersion.VERSION_17\n  }\n}\n' > app/build.gradle
 
-          printf '<?xml version="1.0" encoding="utf-8"?>\n<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n  <uses-permission android:name="android.permission.INTERNET" />\n  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n  <application\n    android:allowBackup="true"\n    android:label="L&amp;D SBS Audit"\n    android:usesCleartextTraffic="true"\n    android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">\n    <activity\n      android:name=".MainActivity"\n      android:configChanges="orientation|screenSize|keyboardHidden"\n      android:exported="true">\n      <intent-filter>\n        <action android:name="android.intent.action.MAIN" />\n        <category android:name="android.intent.category.LAUNCHER" />\n      </intent-filter>\n    </activity>\n  </application>\n</manifest>\n' > app/src/main/AndroidManifest.xml
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n  <uses-permission android:name="android.permission.INTERNET" />\n  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n  <application\n    android:allowBackup="true"\n    android:label="Live Coaching on Packaging"\n    android:usesCleartextTraffic="true"\n    android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">\n    <activity\n      android:name=".MainActivity"\n      android:configChanges="orientation|screenSize|keyboardHidden"\n      android:exported="true"\n      android:windowSoftInputMode="stateAlwaysHidden">\n      <intent-filter>\n        <action android:name="android.intent.action.MAIN" />\n        <category android:name="android.intent.category.LAUNCHER" />\n      </intent-filter>\n    </activity>\n  </application>\n</manifest>\n' > app/src/main/AndroidManifest.xml
 
           cat << 'EOF' > app/src/main/java/com/flipkart/ldaudit/MainActivity.java
           package com.flipkart.ldaudit;
 
           import android.app.Activity;
-          import android.app.AlertDialog;
-          import android.content.SharedPreferences;
           import android.graphics.Color;
           import android.os.Bundle;
-          import android.text.InputType;
           import android.view.Gravity;
           import android.view.KeyEvent;
           import android.view.View;
@@ -52,21 +49,17 @@ jobs:
               private WebView webView;
               private LinearLayout trackingBoxLayout;
               private EditText trackingInput;
-              private Button submitBtn, settingsBtn, auditDoneBtn;
+              private Button submitBtn, coachingDoneBtn;
               private ProgressBar progressBar;
-              private SharedPreferences prefs;
-              private static final String PREF_URL_KEY = "office_internal_url";
-              private static final String DEFAULT_URL = "http://10.24.1.71";
+              private static final String DEFAULT_URL = "http://10.24.1.71/flo-lite";
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
 
-                  prefs = getSharedPreferences("LDAuditPrefs", MODE_PRIVATE);
-                  String savedUrl = prefs.getString(PREF_URL_KEY, "");
-
                   RelativeLayout rootLayout = new RelativeLayout(this);
 
+                  // 1. Always-Visible Top Tracking Bar
                   trackingBoxLayout = new LinearLayout(this);
                   trackingBoxLayout.setId(View.generateViewId());
                   trackingBoxLayout.setOrientation(LinearLayout.HORIZONTAL);
@@ -75,7 +68,7 @@ jobs:
                   trackingBoxLayout.setGravity(Gravity.CENTER_VERTICAL);
 
                   trackingInput = new EditText(this);
-                  trackingInput.setHint("Scan / Enter Tracking ID...");
+                  trackingInput.setHint("Scan Tracking ID");
                   trackingInput.setHintTextColor(Color.parseColor("#94A3B8"));
                   trackingInput.setTextColor(Color.WHITE);
                   trackingInput.setSingleLine(true);
@@ -91,42 +84,35 @@ jobs:
                   submitBtn.setBackgroundColor(Color.parseColor("#2563EB"));
                   submitBtn.setTextColor(Color.WHITE);
 
-                  settingsBtn = new Button(this);
-                  settingsBtn.setText("URL");
-                  settingsBtn.setBackgroundColor(Color.parseColor("#475569"));
-                  settingsBtn.setTextColor(Color.WHITE);
-                  LinearLayout.LayoutParams setParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-                  setParams.setMargins(12, 0, 0, 0);
-                  settingsBtn.setLayoutParams(setParams);
-
                   trackingBoxLayout.addView(trackingInput);
                   trackingBoxLayout.addView(submitBtn);
-                  trackingBoxLayout.addView(settingsBtn);
 
                   RelativeLayout.LayoutParams topBarParams = new RelativeLayout.LayoutParams(
                           RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
                   topBarParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
                   rootLayout.addView(trackingBoxLayout, topBarParams);
 
+                  // 2. Floating "Close This Coaching" Button at TOP
+                  coachingDoneBtn = new Button(this);
+                  coachingDoneBtn.setId(View.generateViewId());
+                  coachingDoneBtn.setText("Close This Coaching");
+                  coachingDoneBtn.setBackgroundColor(Color.parseColor("#16A34A"));
+                  coachingDoneBtn.setTextColor(Color.WHITE);
+                  coachingDoneBtn.setPadding(0, 36, 0, 36);
+                  coachingDoneBtn.setVisibility(View.GONE);
+                  RelativeLayout.LayoutParams doneBtnParams = new RelativeLayout.LayoutParams(
+                          RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
+                  doneBtnParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
+                  rootLayout.addView(coachingDoneBtn, doneBtnParams);
+
+                  // 3. WebView for Office Internal Site & Apps Script
                   webView = new WebView(this);
                   RelativeLayout.LayoutParams webParams = new RelativeLayout.LayoutParams(
                           RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT);
                   webParams.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
                   rootLayout.addView(webView, webParams);
 
-                  auditDoneBtn = new Button(this);
-                  auditDoneBtn.setText("Audit Done (Back to Scanner)");
-                  auditDoneBtn.setBackgroundColor(Color.parseColor("#16A34A"));
-                  auditDoneBtn.setTextColor(Color.WHITE);
-                  auditDoneBtn.setPadding(36, 24, 36, 24);
-                  auditDoneBtn.setVisibility(View.GONE);
-                  RelativeLayout.LayoutParams doneBtnParams = new RelativeLayout.LayoutParams(
-                          RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT);
-                  doneBtnParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM);
-                  doneBtnParams.addRule(RelativeLayout.CENTER_HORIZONTAL);
-                  doneBtnParams.setMargins(0, 0, 0, 40);
-                  rootLayout.addView(auditDoneBtn, doneBtnParams);
-
+                  // 4. ProgressBar
                   progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
                   RelativeLayout.LayoutParams progParams = new RelativeLayout.LayoutParams(
                           RelativeLayout.LayoutParams.MATCH_PARENT, 8);
@@ -137,31 +123,38 @@ jobs:
                   setupWebView();
 
                   submitBtn.setOnClickListener(v -> runBookmarkletScript());
+                  
+                  // Handle Scanner Auto-Enter (অটোমেটিক স্ক্যানারের এন্টার নেওয়া)
+                  trackingInput.setOnKeyListener((v, keyCode, event) -> {
+                      if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_ENTER) {
+                          runBookmarkletScript();
+                          return true;
+                      }
+                      return false;
+                  });
+                  
                   trackingInput.setOnEditorActionListener((v, actionId, event) -> {
-                      if (actionId == EditorInfo.IME_ACTION_GO ||
-                         (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                      if (actionId == EditorInfo.IME_ACTION_GO) {
                           runBookmarkletScript();
                           return true;
                       }
                       return false;
                   });
 
-                  settingsBtn.setOnClickListener(v -> showUrlDialog(false));
-
-                  auditDoneBtn.setOnClickListener(v -> {
-                      String officeUrl = prefs.getString(PREF_URL_KEY, DEFAULT_URL);
+                  coachingDoneBtn.setOnClickListener(v -> {
                       trackingBoxLayout.setVisibility(View.VISIBLE);
-                      auditDoneBtn.setVisibility(View.GONE);
-                      webView.loadUrl(officeUrl);
+                      coachingDoneBtn.setVisibility(View.GONE);
+                      
+                      RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) webView.getLayoutParams();
+                      params.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
+                      webView.setLayoutParams(params);
+
+                      webView.loadUrl(DEFAULT_URL);
                       trackingInput.setText("");
                       trackingInput.requestFocus();
                   });
 
-                  if (savedUrl.isEmpty()) {
-                      showUrlDialog(true);
-                  } else {
-                      webView.loadUrl(savedUrl);
-                  }
+                  webView.loadUrl(DEFAULT_URL);
               }
 
               private void setupWebView() {
@@ -193,23 +186,31 @@ jobs:
               }
 
               private void updateVisibilityForUrl(String url) {
+                  RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) webView.getLayoutParams();
+                  RelativeLayout.LayoutParams progParams = (RelativeLayout.LayoutParams) progressBar.getLayoutParams();
                   if (url != null && (url.contains("script.google.com") || url.contains("script.googleusercontent.com"))) {
                       trackingBoxLayout.setVisibility(View.GONE);
-                      auditDoneBtn.setVisibility(View.VISIBLE);
+                      coachingDoneBtn.setVisibility(View.VISIBLE);
+                      params.addRule(RelativeLayout.BELOW, coachingDoneBtn.getId());
+                      progParams.addRule(RelativeLayout.BELOW, coachingDoneBtn.getId());
                   } else {
                       trackingBoxLayout.setVisibility(View.VISIBLE);
-                      auditDoneBtn.setVisibility(View.GONE);
+                      coachingDoneBtn.setVisibility(View.GONE);
+                      params.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
+                      progParams.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
                   }
+                  webView.setLayoutParams(params);
+                  progressBar.setLayoutParams(progParams);
               }
 
               private void runBookmarkletScript() {
                   String rawId = trackingInput.getText().toString().trim().toUpperCase();
                   if (rawId.isEmpty()) {
-                      Toast.makeText(this, "Enter Tracking / Shipment ID!", Toast.LENGTH_SHORT).show();
+                      Toast.makeText(this, "Enter Tracking ID!", Toast.LENGTH_SHORT).show();
                       return;
                   }
 
-                  Toast.makeText(this, "Searching Shipment Details...", Toast.LENGTH_SHORT).show();
+                  Toast.makeText(this, "Searching Details...", Toast.LENGTH_SHORT).show();
 
                   String jsCode = "(async function(){" +
                           "var id='" + rawId.replace("'", "") + "';" +
@@ -242,41 +243,19 @@ jobs:
 
                   webView.evaluateJavascript(jsCode, null);
               }
-
-              private void showUrlDialog(boolean isFirstRun) {
-                  AlertDialog.Builder builder = new AlertDialog.Builder(this);
-                  builder.setTitle("Office Internal URL");
-                  builder.setMessage("Paste the internal page link that stays open:");
-
-                  final EditText input = new EditText(this);
-                  input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-                  input.setText(prefs.getString(PREF_URL_KEY, "http://10.24.1.71/"));
-                  builder.setView(input);
-                  builder.setCancelable(!isFirstRun);
-
-                  builder.setPositiveButton("Save & Open", (dialog, which) -> {
-                      String url = input.getText().toString().trim();
-                      if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                          url = "http://" + url;
-                      }
-                      prefs.edit().putString(PREF_URL_KEY, url).apply();
-                      webView.loadUrl(url);
-                  });
-
-                  if (!isFirstRun) {
-                      builder.setNegativeButton("Cancel", (dialog, which) -> dialog.cancel());
-                  }
-                  builder.show();
-              }
-
+              
               @Override
               public void onBackPressed() {
                   String currentUrl = webView.getUrl();
                   if (currentUrl != null && (currentUrl.contains("script.google.com") || currentUrl.contains("script.googleusercontent.com"))) {
-                      String officeUrl = prefs.getString(PREF_URL_KEY, DEFAULT_URL);
                       trackingBoxLayout.setVisibility(View.VISIBLE);
-                      auditDoneBtn.setVisibility(View.GONE);
-                      webView.loadUrl(officeUrl);
+                      coachingDoneBtn.setVisibility(View.GONE);
+                      
+                      RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) webView.getLayoutParams();
+                      params.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
+                      webView.setLayoutParams(params);
+
+                      webView.loadUrl(DEFAULT_URL);
                       trackingInput.setText("");
                   } else if (webView.canGoBack()) {
                       webView.goBack();
@@ -305,5 +284,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: LD-SBS-Audit-APK
+          name: Live-Coaching-App-APK
           path: app/build/outputs/apk/debug/app-debug.apk
