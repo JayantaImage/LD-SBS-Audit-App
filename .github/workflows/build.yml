@@ -18,14 +18,15 @@ jobs:
 
           printf 'plugins {\n  id "com.android.application" version "8.2.0" apply false\n}\n' > build.gradle
 
-          printf 'plugins {\n  id "com.android.application"\n}\nandroid {\n  namespace "com.flipkart.ldaudit"\n  compileSdk 34\n  defaultConfig {\n    applicationId "com.flipkart.ldaudit"\n    minSdk 24\n    targetSdk 34\n    versionCode 2\n    versionName "2.0"\n  }\n  compileOptions {\n    sourceCompatibility JavaVersion.VERSION_17\n    targetCompatibility JavaVersion.VERSION_17\n  }\n}\n' > app/build.gradle
+          printf 'plugins {\n  id "com.android.application"\n}\nandroid {\n  namespace "com.flipkart.ldaudit"\n  compileSdk 34\n  defaultConfig {\n    applicationId "com.flipkart.ldaudit"\n    minSdk 24\n    targetSdk 34\n    versionCode 3\n    versionName "3.0"\n  }\n  compileOptions {\n    sourceCompatibility JavaVersion.VERSION_17\n    targetCompatibility JavaVersion.VERSION_17\n  }\n}\ndependencies {\n  implementation "androidx.appcompat:appcompat:1.6.1"\n  implementation "com.journeyapps:zxing-android-embedded:4.3.0"\n}\n' > app/build.gradle
 
-          printf '<?xml version="1.0" encoding="utf-8"?>\n<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n  <uses-permission android:name="android.permission.INTERNET" />\n  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n  <application\n    android:allowBackup="true"\n    android:label="Live Coaching on Packaging"\n    android:usesCleartextTraffic="true"\n    android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">\n    <activity\n      android:name=".MainActivity"\n      android:configChanges="orientation|screenSize|keyboardHidden"\n      android:exported="true"\n      android:windowSoftInputMode="stateAlwaysHidden">\n      <intent-filter>\n        <action android:name="android.intent.action.MAIN" />\n        <category android:name="android.intent.category.LAUNCHER" />\n      </intent-filter>\n    </activity>\n  </application>\n</manifest>\n' > app/src/main/AndroidManifest.xml
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n  <uses-permission android:name="android.permission.INTERNET" />\n  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n  <uses-permission android:name="android.permission.CAMERA" />\n  <application\n    android:allowBackup="true"\n    android:label="Live Coaching on Packaging"\n    android:usesCleartextTraffic="true"\n    android:hardwareAccelerated="true"\n    android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">\n    <activity\n      android:name=".MainActivity"\n      android:configChanges="orientation|screenSize|keyboardHidden"\n      android:exported="true"\n      android:windowSoftInputMode="stateAlwaysHidden">\n      <intent-filter>\n        <action android:name="android.intent.action.MAIN" />\n        <category android:name="android.intent.category.LAUNCHER" />\n      </intent-filter>\n    </activity>\n    <activity android:name="com.journeyapps.barcodescanner.CaptureActivity" android:screenOrientation="fullSensor" android:tools:replace="screenOrientation" xmlns:tools="http://schemas.android.com/tools" />\n  </application>\n</manifest>\n' > app/src/main/AndroidManifest.xml
 
           cat << 'EOF' > app/src/main/java/com/flipkart/ldaudit/MainActivity.java
           package com.flipkart.ldaudit;
 
           import android.app.Activity;
+          import android.content.Intent;
           import android.graphics.Color;
           import android.os.Bundle;
           import android.view.Gravity;
@@ -44,12 +45,15 @@ jobs:
           import android.widget.RelativeLayout;
           import android.widget.Toast;
 
+          import com.google.zxing.integration.android.IntentIntegrator;
+          import com.google.zxing.integration.android.IntentResult;
+
           public class MainActivity extends Activity {
 
               private WebView webView;
               private LinearLayout trackingBoxLayout;
               private EditText trackingInput;
-              private Button submitBtn, coachingDoneBtn;
+              private Button submitBtn, scanBtn, coachingDoneBtn;
               private ProgressBar progressBar;
               private static final String DEFAULT_URL = "http://10.24.1.71/flo-lite";
 
@@ -79,12 +83,22 @@ jobs:
                   inputParams.setMargins(0, 0, 12, 0);
                   trackingInput.setLayoutParams(inputParams);
 
+                  scanBtn = new Button(this);
+                  scanBtn.setText("📷 SCAN");
+                  scanBtn.setBackgroundColor(Color.parseColor("#EAB308"));
+                  scanBtn.setTextColor(Color.BLACK);
+                  LinearLayout.LayoutParams scanParams = new LinearLayout.LayoutParams(
+                          LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                  scanParams.setMargins(0, 0, 12, 0);
+                  scanBtn.setLayoutParams(scanParams);
+
                   submitBtn = new Button(this);
                   submitBtn.setText("GO");
                   submitBtn.setBackgroundColor(Color.parseColor("#2563EB"));
                   submitBtn.setTextColor(Color.WHITE);
 
                   trackingBoxLayout.addView(trackingInput);
+                  trackingBoxLayout.addView(scanBtn);
                   trackingBoxLayout.addView(submitBtn);
 
                   RelativeLayout.LayoutParams topBarParams = new RelativeLayout.LayoutParams(
@@ -105,7 +119,7 @@ jobs:
                   doneBtnParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
                   rootLayout.addView(coachingDoneBtn, doneBtnParams);
 
-                  // 3. WebView for Office Internal Site & Apps Script
+                  // 3. WebView
                   webView = new WebView(this);
                   RelativeLayout.LayoutParams webParams = new RelativeLayout.LayoutParams(
                           RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT);
@@ -122,9 +136,19 @@ jobs:
                   setContentView(rootLayout);
                   setupWebView();
 
+                  // Listeners
                   submitBtn.setOnClickListener(v -> runBookmarkletScript());
                   
-                  // Handle Scanner Auto-Enter (অটোমেটিক স্ক্যানারের এন্টার নেওয়া)
+                  scanBtn.setOnClickListener(v -> {
+                      IntentIntegrator integrator = new IntentIntegrator(MainActivity.this);
+                      integrator.setDesiredBarcodeFormats(IntentIntegrator.ALL_CODE_TYPES);
+                      integrator.setPrompt("Scan a Tracking ID (Barcode/QR)");
+                      integrator.setCameraId(0);
+                      integrator.setBeepEnabled(true);
+                      integrator.setBarcodeImageEnabled(false);
+                      integrator.initiateScan();
+                  });
+
                   trackingInput.setOnKeyListener((v, keyCode, event) -> {
                       if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_ENTER) {
                           runBookmarkletScript();
@@ -155,6 +179,21 @@ jobs:
                   });
 
                   webView.loadUrl(DEFAULT_URL);
+              }
+
+              @Override
+              protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+                  IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+                  if(result != null) {
+                      if(result.getContents() != null) {
+                          String scannedCode = result.getContents();
+                          trackingInput.setText(scannedCode);
+                          // Auto Submit!
+                          runBookmarkletScript();
+                      }
+                  } else {
+                      super.onActivityResult(requestCode, resultCode, data);
+                  }
               }
 
               private void setupWebView() {
@@ -213,32 +252,39 @@ jobs:
                   Toast.makeText(this, "Searching Details...", Toast.LENGTH_SHORT).show();
 
                   String jsCode = "(async function(){" +
-                          "var id='" + rawId.replace("'", "") + "';" +
-                          "var sId=id;" +
+                          "var facs=['nad_har_wh_kl_nl_01nl','gur_san_wh_nl_01nl','pit_dha_al_swa_nl_01nl','nag_rtm_wh_nl_01nl','frk_bts','cbe_oth_01','bhi_pad_wh_nl_01nl','ran_mfc_wh_nl_01nl','vij_ved_wh_nl_01nl','malur_bts','ind_teh_wh_nl_01nl','bhi_vas_wh_nl_01nl','ban_ven_wh_nl_01nl','guw_kam_wh_nl_02nl','luc_has_wh_nl_02nl','ulub_bts','chn_tvr_04','hyderabad_medchal_01','ahm_khe_wh_nl_01nl','lud_kha_wh_nl_01nl','jai_san_wh_nl_01nl','jal_bin_wh_nl_01nl','bhu_pan_wh_nl_01nl','pat_haj_wh_nl_01nl','pun_bad_wh_nl_01nl','bhi_sse_wh_nl_01nl','var_mfc_wh_nl_01nl','rai_dha_wh_nl_02nl','gur_bho_al_adi_nl_01nl','sur_mfc_wh_nl_01nl','gur_gop_al_emi_nl_01nl','ben_kat_al_ema_nl_01nl','mal_ban_al_fat_nl_01nl','dha_mol_al_ema_nl_03nl','ban_may_al_bra_nl_01nl','coc_mfc_wh_nl_01nl','grk_mfc_wh_nl_01nl','ban_may_al_bra_nl_02nl','bhi_tha_al_emi_nl_01nl','gur_sam_al_abr_nl_01nl','new_ham_al_glo_nl_01nl','kol_gab_3pl_g_01','hyd_dev_al_dro_nl_02nl','dha_kot_wh_nl_01nl','ind_las_al_bum_nl_01nl','kal_gur_wh_kl_nl_01nl','how_arg_al_wil_nl_01nl','ban_ban_al_ind_nl_01nl','ban_mal_al_ban_nl_01nl','kur_moh_al_pir_nl_01nl','bhi_mum_al_dro_nl_01nl','jab_mfc_wh_nl_01nl','kol_sal_al_dol_nl_01nl','how_san_al_emi_nl_01nl','del_bud_al_ban_nl_02nl','bhi_tha_al_ema_nl_01nl','kol_how_al_rak_nl_01nl','har_jha_al_fat_nl_01nl','kol_how_al_nex_nl_03nl','tir_ang_al_dol_nl_02nl'];" +
+                          "function getFac(){var p=location.pathname,m=p.match(/\\/flo-lite\\/([^\\/?#]+)/i)||p.match(/\\/([^\\/]+)\\/(?:desktop|mobile)(?:\\/|$)/i);if(m)return decodeURIComponent(m[1]);var q=new URLSearchParams(location.search);return q.get('facility_id')||q.get('facilityId')||null;}" +
+                          "var id='" + rawId.replace("'", "\\'") + "';" +
+                          "if(!id)return;id=id.trim().toUpperCase();" +
+                          "var cTag=document.querySelector('meta[name=\"csrf-token\"]'),cCook=document.cookie.match(/csrf-token=([^;]+)/),tok=cTag?cTag.content:(cCook?cCook[1]:'');" +
+                          "var cFac=getFac(),fList=cFac?[cFac].concat(facs.filter(f=>f!==cFac)):facs;" +
+                          "var fData=null,fFinal=null;" +
+                          "var d1=new Date();d1.setDate(d1.getDate()-60);var d2=new Date();d2.setDate(d2.getDate()+60);" +
+                          "var msg=document.createElement('div');msg.innerHTML='Searching across facilities. Please wait...';msg.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:12px 24px;z-index:999999;border-radius:8px;font-family:sans-serif;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,0.3);';document.body.appendChild(msg);" +
+                          "for(let f of fList){" +
                           "try{" +
-                          "var hdrs={'accept':'application/json','content-type':'application/json','x-facility-id':'ulub_bts'};" +
-                          "var csrfTag=document.querySelector('meta[name=\"csrf-token\"]');" +
-                          "var csrfCookie=document.cookie.match(/csrf-token=([^;]+)/);" +
-                          "if(csrfTag)hdrs['csrf-token']=csrfTag.content;" +
-                          "else if(csrfCookie)hdrs['csrf-token']=csrfCookie[1];" +
-                          "if(!id.startsWith('S')){" +
-                          "var d1=new Date();d1.setDate(d1.getDate()-60);" +
-                          "var d2=new Date();d2.setDate(d2.getDate()+60);" +
-                          "var postHdrs=Object.assign({},hdrs);" +
-                          "postHdrs['x-search-type']='shipments';" +
-                          "var payload={'range_filters':[{'type':'dispatch_by_date','from':d1.toISOString(),'to':d2.toISOString()},{'type':'updated_at','from':d1.toISOString(),'to':d2.toISOString()}],'sorting':{'sort_asc':true,'sorting_field':'dispatch_by_date'},'table_filters':{'tracking_id':id},'pagination':{'page':1,'page_size':10}};" +
-                          "var sRes=await fetch('http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/search/shipments',{method:'POST',headers:postHdrs,body:JSON.stringify(payload),credentials:'include'});" +
-                          "if(!sRes.ok)throw new Error('Tracking ID Search error');" +
-                          "var sData=await sRes.json();" +
-                          "if(sData&&sData.data&&sData.data.shipments_list&&sData.data.shipments_list.length>0){sId=sData.data.shipments_list[0].shipment_id;}else{throw new Error('Tracking ID not found');}" +
+                          "var h={'accept':'application/json','content-type':'application/json','x-facility-id':f};" +
+                          "if(tok)h['csrf-token']=tok;" +
+                          "var sId=id;" +
+                          "if(!id.match(/^S\\d+$/)){" +
+                          "var ph=Object.assign({},h);ph['x-search-type']='shipments';" +
+                          "var py={'range_filters':[{'type':'dispatch_by_date','from':d1.toISOString(),'to':d2.toISOString()},{'type':'updated_at','from':d1.toISOString(),'to':d2.toISOString()}],'sorting':{'sort_asc':true,'sorting_field':'dispatch_by_date'},'table_filters':{'tracking_id':id},'pagination':{'page':1,'page_size':10}};" +
+                          "var sr=await fetch('http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/search/shipments',{method:'POST',headers:ph,body:JSON.stringify(py),credentials:'include'});" +
+                          "if(sr.status===401||sr.status===403)continue;" +
+                          "if(!sr.ok)continue;" +
+                          "var sd=await sr.json();" +
+                          "if(sd&&sd.data&&sd.data.shipments_list&&sd.data.shipments_list.length>0){sId=sd.data.shipments_list[0].shipment_id;}else{continue;}" +
                           "}" +
-                          "var dRes=await fetch('http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/search/shipments/detail?shipment_id='+sId,{headers:hdrs,method:'GET',credentials:'include'});" +
-                          "if(!dRes.ok)throw new Error('Details GET error');" +
-                          "var dData=await dRes.json();" +
-                          "var encodedData=encodeURIComponent(JSON.stringify(dData));" +
-                          "var appScriptUrl='https://script.google.com/a/macros/flipkart.com/s/AKfycbzwaSjLDJIh9_GfsdKqZ3sBT2qlyl1hVQW5lqnGoyXTFE7CrRyVfky15eeYQlygU28I/exec';" +
-                          "window.location.href=appScriptUrl+'?data='+encodedData;" +
-                          "}catch(e){alert('Error: '+e.message);}" +
+                          "var dr=await fetch('http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/search/shipments/detail?shipment_id='+sId,{headers:h,method:'GET',credentials:'include'});" +
+                          "if(dr.status===401||dr.status===403)continue;" +
+                          "if(dr.ok){var dd=await dr.json();if(dd){fData=dd;fFinal=f;break;}}" +
+                          "}catch(e){continue;}" +
+                          "}" +
+                          "msg.remove();" +
+                          "if(fData){" +
+                          "var u='https://script.google.com/a/macros/flipkart.com/s/AKfycbzwaSjLDJIh9_GfsdKqZ3sBT2qlyl1hVQW5lqnGoyXTFE7CrRyVfky15eeYQlygU28I/exec';" +
+                          "window.location.href=u+'?fac='+encodeURIComponent(fFinal)+'&data='+encodeURIComponent(JSON.stringify(fData));" +
+                          "}else{alert('Shipment details not found.');}" +
                           "})();";
 
                   webView.evaluateJavascript(jsCode, null);
