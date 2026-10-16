@@ -14,6 +14,9 @@ jobs:
           rm -rf *
           mkdir -p app/src/main/java/com/flipkart/ldaudit
 
+          echo "android.useAndroidX=true" > gradle.properties
+          echo "android.enableJetifier=true" >> gradle.properties
+
           printf 'pluginManagement {\n  repositories {\n    google()\n    mavenCentral()\n    gradlePluginPortal()\n  }\n}\ndependencyResolutionManagement {\n  repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)\n  repositories {\n    google()\n    mavenCentral()\n  }\n}\nrootProject.name = "LiveCoachingApp"\ninclude ":app"\n' > settings.gradle
 
           printf 'plugins {\n  id "com.android.application" version "8.2.0" apply false\n}\n' > build.gradle
@@ -65,7 +68,6 @@ jobs:
 
                   RelativeLayout rootLayout = new RelativeLayout(this);
 
-                  // 1. Always-Visible Top Tracking Bar
                   trackingBoxLayout = new LinearLayout(this);
                   trackingBoxLayout.setId(View.generateViewId());
                   trackingBoxLayout.setOrientation(LinearLayout.HORIZONTAL);
@@ -86,7 +88,7 @@ jobs:
                   trackingInput.setLayoutParams(inputParams);
 
                   scanBtn = new Button(this);
-                  scanBtn.setText("\uD83D\uDCF7 SCAN"); // Camera Icon
+                  scanBtn.setText("\uD83D\uDCF7 SCAN"); 
                   scanBtn.setBackgroundColor(Color.parseColor("#EAB308"));
                   scanBtn.setTextColor(Color.BLACK);
                   LinearLayout.LayoutParams scanParams = new LinearLayout.LayoutParams(
@@ -108,7 +110,6 @@ jobs:
                   topBarParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
                   rootLayout.addView(trackingBoxLayout, topBarParams);
 
-                  // 2. Floating "Close This Coaching" Button at TOP
                   coachingDoneBtn = new Button(this);
                   coachingDoneBtn.setId(View.generateViewId());
                   coachingDoneBtn.setText("Close This Coaching");
@@ -121,14 +122,12 @@ jobs:
                   doneBtnParams.addRule(RelativeLayout.ALIGN_PARENT_TOP);
                   rootLayout.addView(coachingDoneBtn, doneBtnParams);
 
-                  // 3. WebView
                   webView = new WebView(this);
                   RelativeLayout.LayoutParams webParams = new RelativeLayout.LayoutParams(
                           RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT);
                   webParams.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
                   rootLayout.addView(webView, webParams);
 
-                  // 4. ProgressBar
                   progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
                   RelativeLayout.LayoutParams progParams = new RelativeLayout.LayoutParams(
                           RelativeLayout.LayoutParams.MATCH_PARENT, 8);
@@ -138,17 +137,14 @@ jobs:
                   setContentView(rootLayout);
                   setupWebView();
                   
-                  // Initialize Google ML Kit Barcode Scanner Installer
                   ModuleInstallClient moduleInstallClient = ModuleInstall.getClient(this);
                   ModuleInstallRequest moduleInstallRequest = ModuleInstallRequest.newBuilder()
                           .addApi(GmsBarcodeScanning.getClient(this))
                           .build();
                   moduleInstallClient.installModules(moduleInstallRequest);
 
-                  // Google Play Services Scanner Setup
                   GmsBarcodeScanner scanner = GmsBarcodeScanning.getClient(this);
 
-                  // Listeners
                   submitBtn.setOnClickListener(v -> runBookmarkletScript());
                   
                   scanBtn.setOnClickListener(v -> {
@@ -157,7 +153,7 @@ jobs:
                               String scannedCode = barcode.getRawValue();
                               if(scannedCode != null) {
                                   trackingInput.setText(scannedCode);
-                                  runBookmarkletScript(); // Auto Submit!
+                                  runBookmarkletScript(); 
                               }
                           })
                           .addOnFailureListener(e -> Toast.makeText(getApplicationContext(), "Scan failed!", Toast.LENGTH_SHORT).show());
@@ -286,48 +282,48 @@ jobs:
                           "}else{alert('Shipment details not found.');}" +
                           "})();";
 
-                  webView.evaluateJavascript(jsCode, null);
-              }
-              
-              @Override
-              public void onBackPressed() {
-                  String currentUrl = webView.getUrl();
-                  if (currentUrl != null && (currentUrl.contains("script.google.com") || currentUrl.contains("script.googleusercontent.com"))) {
-                      trackingBoxLayout.setVisibility(View.VISIBLE);
-                      coachingDoneBtn.setVisibility(View.GONE);
-                      
-                      RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) webView.getLayoutParams();
-                      params.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
-                      webView.setLayoutParams(params);
+                      webView.evaluateJavascript(jsCode, null);
+                  }
+                  
+                  @Override
+                  public void onBackPressed() {
+                      String currentUrl = webView.getUrl();
+                      if (currentUrl != null && (currentUrl.contains("script.google.com") || currentUrl.contains("script.googleusercontent.com"))) {
+                          trackingBoxLayout.setVisibility(View.VISIBLE);
+                          coachingDoneBtn.setVisibility(View.GONE);
+                          
+                          RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) webView.getLayoutParams();
+                          params.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
+                          webView.setLayoutParams(params);
 
-                      webView.loadUrl(DEFAULT_URL);
-                      trackingInput.setText("");
-                  } else if (webView.canGoBack()) {
-                      webView.goBack();
-                  } else {
-                      super.onBackPressed();
+                          webView.loadUrl(DEFAULT_URL);
+                          trackingInput.setText("");
+                      } else if (webView.canGoBack()) {
+                          webView.goBack();
+                      } else {
+                          super.onBackPressed();
+                      }
                   }
               }
-          }
-          EOF
-          sed -i 's/^          //' app/src/main/java/com/flipkart/ldaudit/MainActivity.java
+              EOF
+              sed -i 's/^              //' app/src/main/java/com/flipkart/ldaudit/MainActivity.java
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
+          - name: Set up JDK 17
+            uses: actions/setup-java@v4
+            with:
+              java-version: '17'
+              distribution: 'temurin'
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.4'
+          - name: Setup Gradle
+            uses: gradle/actions/setup-gradle@v3
+            with:
+              gradle-version: '8.4'
 
-      - name: Build Debug APK
-        run: gradle assembleDebug
+          - name: Build Debug APK
+            run: gradle assembleDebug
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Live-Coaching-App-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          - name: Upload APK
+            uses: actions/upload-artifact@v4
+            with:
+              name: Live-Coaching-App-APK
+              path: app/build/outputs/apk/debug/app-debug.apk
