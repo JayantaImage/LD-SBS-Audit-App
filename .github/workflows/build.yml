@@ -1,4 +1,4 @@
-name: Build L&D SBS Audit APK
+name: Build Live Coaching APK
 
 on:
   push:
@@ -18,15 +18,14 @@ jobs:
 
           printf 'plugins {\n  id "com.android.application" version "8.2.0" apply false\n}\n' > build.gradle
 
-          printf 'plugins {\n  id "com.android.application"\n}\nandroid {\n  namespace "com.flipkart.ldaudit"\n  compileSdk 34\n  defaultConfig {\n    applicationId "com.flipkart.ldaudit"\n    minSdk 24\n    targetSdk 34\n    versionCode 3\n    versionName "3.0"\n  }\n  compileOptions {\n    sourceCompatibility JavaVersion.VERSION_17\n    targetCompatibility JavaVersion.VERSION_17\n  }\n}\ndependencies {\n  implementation "androidx.appcompat:appcompat:1.6.1"\n  implementation "com.journeyapps:zxing-android-embedded:4.3.0"\n}\n' > app/build.gradle
+          printf 'plugins {\n  id "com.android.application"\n}\nandroid {\n  namespace "com.flipkart.ldaudit"\n  compileSdk 34\n  defaultConfig {\n    applicationId "com.flipkart.ldaudit"\n    minSdk 23\n    targetSdk 34\n    versionCode 4\n    versionName "4.0"\n  }\n  compileOptions {\n    sourceCompatibility JavaVersion.VERSION_17\n    targetCompatibility JavaVersion.VERSION_17\n  }\n}\ndependencies {\n  implementation "com.google.android.gms:play-services-code-scanner:16.1.0"\n}\n' > app/build.gradle
 
-          printf '<?xml version="1.0" encoding="utf-8"?>\n<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n  <uses-permission android:name="android.permission.INTERNET" />\n  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n  <uses-permission android:name="android.permission.CAMERA" />\n  <application\n    android:allowBackup="true"\n    android:label="Live Coaching on Packaging"\n    android:usesCleartextTraffic="true"\n    android:hardwareAccelerated="true"\n    android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">\n    <activity\n      android:name=".MainActivity"\n      android:configChanges="orientation|screenSize|keyboardHidden"\n      android:exported="true"\n      android:windowSoftInputMode="stateAlwaysHidden">\n      <intent-filter>\n        <action android:name="android.intent.action.MAIN" />\n        <category android:name="android.intent.category.LAUNCHER" />\n      </intent-filter>\n    </activity>\n    <activity android:name="com.journeyapps.barcodescanner.CaptureActivity" android:screenOrientation="fullSensor" android:tools:replace="screenOrientation" xmlns:tools="http://schemas.android.com/tools" />\n  </application>\n</manifest>\n' > app/src/main/AndroidManifest.xml
+          printf '<?xml version="1.0" encoding="utf-8"?>\n<manifest xmlns:android="http://schemas.android.com/apk/res/android">\n  <uses-permission android:name="android.permission.INTERNET" />\n  <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />\n  <application\n    android:allowBackup="true"\n    android:label="Live Coaching on Packaging"\n    android:usesCleartextTraffic="true"\n    android:hardwareAccelerated="true"\n    android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar">\n    <activity\n      android:name=".MainActivity"\n      android:configChanges="orientation|screenSize|keyboardHidden"\n      android:exported="true"\n      android:windowSoftInputMode="stateAlwaysHidden">\n      <intent-filter>\n        <action android:name="android.intent.action.MAIN" />\n        <category android:name="android.intent.category.LAUNCHER" />\n      </intent-filter>\n    </activity>\n  </application>\n</manifest>\n' > app/src/main/AndroidManifest.xml
 
           cat << 'EOF' > app/src/main/java/com/flipkart/ldaudit/MainActivity.java
           package com.flipkart.ldaudit;
 
           import android.app.Activity;
-          import android.content.Intent;
           import android.graphics.Color;
           import android.os.Bundle;
           import android.view.Gravity;
@@ -45,8 +44,11 @@ jobs:
           import android.widget.RelativeLayout;
           import android.widget.Toast;
 
-          import com.google.zxing.integration.android.IntentIntegrator;
-          import com.google.zxing.integration.android.IntentResult;
+          import com.google.android.gms.common.moduleinstall.ModuleInstall;
+          import com.google.android.gms.common.moduleinstall.ModuleInstallClient;
+          import com.google.android.gms.common.moduleinstall.ModuleInstallRequest;
+          import com.google.mlkit.vision.codescanner.GmsBarcodeScanner;
+          import com.google.mlkit.vision.codescanner.GmsBarcodeScanning;
 
           public class MainActivity extends Activity {
 
@@ -84,7 +86,7 @@ jobs:
                   trackingInput.setLayoutParams(inputParams);
 
                   scanBtn = new Button(this);
-                  scanBtn.setText("📷 SCAN");
+                  scanBtn.setText("\uD83D\uDCF7 SCAN"); // Camera Icon
                   scanBtn.setBackgroundColor(Color.parseColor("#EAB308"));
                   scanBtn.setTextColor(Color.BLACK);
                   LinearLayout.LayoutParams scanParams = new LinearLayout.LayoutParams(
@@ -135,18 +137,30 @@ jobs:
 
                   setContentView(rootLayout);
                   setupWebView();
+                  
+                  // Initialize Google ML Kit Barcode Scanner Installer
+                  ModuleInstallClient moduleInstallClient = ModuleInstall.getClient(this);
+                  ModuleInstallRequest moduleInstallRequest = ModuleInstallRequest.newBuilder()
+                          .addApi(GmsBarcodeScanning.getClient(this))
+                          .build();
+                  moduleInstallClient.installModules(moduleInstallRequest);
+
+                  // Google Play Services Scanner Setup
+                  GmsBarcodeScanner scanner = GmsBarcodeScanning.getClient(this);
 
                   // Listeners
                   submitBtn.setOnClickListener(v -> runBookmarkletScript());
                   
                   scanBtn.setOnClickListener(v -> {
-                      IntentIntegrator integrator = new IntentIntegrator(MainActivity.this);
-                      integrator.setDesiredBarcodeFormats(IntentIntegrator.ALL_CODE_TYPES);
-                      integrator.setPrompt("Scan a Tracking ID (Barcode/QR)");
-                      integrator.setCameraId(0);
-                      integrator.setBeepEnabled(true);
-                      integrator.setBarcodeImageEnabled(false);
-                      integrator.initiateScan();
+                      scanner.startScan()
+                          .addOnSuccessListener(barcode -> {
+                              String scannedCode = barcode.getRawValue();
+                              if(scannedCode != null) {
+                                  trackingInput.setText(scannedCode);
+                                  runBookmarkletScript(); // Auto Submit!
+                              }
+                          })
+                          .addOnFailureListener(e -> Toast.makeText(getApplicationContext(), "Scan failed!", Toast.LENGTH_SHORT).show());
                   });
 
                   trackingInput.setOnKeyListener((v, keyCode, event) -> {
@@ -179,21 +193,6 @@ jobs:
                   });
 
                   webView.loadUrl(DEFAULT_URL);
-              }
-
-              @Override
-              protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-                  IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
-                  if(result != null) {
-                      if(result.getContents() != null) {
-                          String scannedCode = result.getContents();
-                          trackingInput.setText(scannedCode);
-                          // Auto Submit!
-                          runBookmarkletScript();
-                      }
-                  } else {
-                      super.onActivityResult(requestCode, resultCode, data);
-                  }
               }
 
               private void setupWebView() {
