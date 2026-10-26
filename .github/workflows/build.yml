@@ -9,10 +9,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Force Clean Setup
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Force Clean Setup & Add Logo
         run: |
-          rm -rf *
           mkdir -p app/src/main/java/com/flipkart/ldaudit
+          mkdir -p app/src/main/res/mipmap-xxhdpi
+
+          cp packaging_coaching_icon_512.png app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+          cp packaging_coaching_icon_512.png app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
 
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
@@ -53,8 +59,8 @@ jobs:
                   applicationId "com.flipkart.ldaudit"
                   minSdk 23
                   targetSdk 34
-                  versionCode 6
-                  versionName "6.0"
+                  versionCode 8
+                  versionName "8.0"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -73,6 +79,8 @@ jobs:
               <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
               <application
                   android:allowBackup="true"
+                  android:icon="@mipmap/ic_launcher"
+                  android:roundIcon="@mipmap/ic_launcher_round"
                   android:label="Live Coaching on Packaging"
                   android:usesCleartextTraffic="true"
                   android:hardwareAccelerated="true"
@@ -363,31 +371,31 @@ jobs:
                           "}else{alert('Shipment details not found.');}" +
                           "})();";
 
-                  webView.evaluateJavascript(jsCode, null);
-              }
-              
-              @Override
-              public void onBackPressed() {
-                  String currentUrl = webView.getUrl();
-                  if (currentUrl != null && (currentUrl.contains("script.google.com") || currentUrl.contains("script.googleusercontent.com"))) {
-                      trackingBoxLayout.setVisibility(View.VISIBLE);
-                      coachingDoneBtn.setVisibility(View.GONE);
-                      
-                      RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) webView.getLayoutParams();
-                      params.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
-                      webView.setLayoutParams(params);
+                      webView.evaluateJavascript(jsCode, null);
+                  }
+                  
+                  @Override
+                  public void onBackPressed() {
+                      String currentUrl = webView.getUrl();
+                      if (currentUrl != null && (currentUrl.contains("script.google.com") || currentUrl.contains("script.googleusercontent.com"))) {
+                          trackingBoxLayout.setVisibility(View.VISIBLE);
+                          coachingDoneBtn.setVisibility(View.GONE);
+                          
+                          RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) webView.getLayoutParams();
+                          params.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
+                          webView.setLayoutParams(params);
 
-                      webView.loadUrl(DEFAULT_URL);
-                      trackingInput.setText("");
-                  } else if (webView.canGoBack()) {
-                      webView.goBack();
-                  } else {
-                      super.onBackPressed();
+                          webView.loadUrl(DEFAULT_URL);
+                          trackingInput.setText("");
+                      } else if (webView.canGoBack()) {
+                          webView.goBack();
+                      } else {
+                          super.onBackPressed();
+                      }
                   }
               }
-          }
-          EOF
-          sed -i 's/^          //' app/src/main/java/com/flipkart/ldaudit/MainActivity.java
+              EOF
+              sed -i 's/^              //' app/src/main/java/com/flipkart/ldaudit/MainActivity.java
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
