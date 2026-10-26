@@ -16,9 +16,12 @@ jobs:
         run: |
           mkdir -p app/src/main/java/com/flipkart/ldaudit
           mkdir -p app/src/main/res/mipmap-xxhdpi
+          mkdir -p app/src/main/assets
 
-          cp packaging_coaching_icon_512.png app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-          cp packaging_coaching_icon_512.png app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+          if [ -f "packaging_coaching_icon_512.png" ]; then
+            cp packaging_coaching_icon_512.png app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+            cp packaging_coaching_icon_512.png app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+          fi
 
           echo "android.useAndroidX=true" > gradle.properties
           echo "android.enableJetifier=true" >> gradle.properties
@@ -59,8 +62,8 @@ jobs:
                   applicationId "com.flipkart.ldaudit"
                   minSdk 23
                   targetSdk 34
-                  versionCode 9
-                  versionName "9.0"
+                  versionCode 10
+                  versionName "10.0"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -99,6 +102,65 @@ jobs:
           </manifest>
           EOF
 
+          cat << 'EOF' > app/src/main/assets/script.js
+          (async function(){
+            var facs=["nad_har_wh_kl_nl_01nl","gur_san_wh_nl_01nl","pit_dha_al_swa_nl_01nl","nag_rtm_wh_nl_01nl","frk_bts","cbe_oth_01","bhi_pad_wh_nl_01nl","ran_mfc_wh_nl_01nl","vij_ved_wh_nl_01nl","malur_bts","ind_teh_wh_nl_01nl","bhi_vas_wh_nl_01nl","ban_ven_wh_nl_01nl","guw_kam_wh_nl_02nl","luc_has_wh_nl_02nl","ulub_bts","chn_tvr_04","hyderabad_medchal_01","ahm_khe_wh_nl_01nl","lud_kha_wh_nl_01nl","jai_san_wh_nl_01nl","jal_bin_wh_nl_01nl","bhu_pan_wh_nl_01nl","pat_haj_wh_nl_01nl","pun_bad_wh_nl_01nl","bhi_sse_wh_nl_01nl","var_mfc_wh_nl_01nl","rai_dha_wh_nl_02nl","gur_bho_al_adi_nl_01nl","sur_mfc_wh_nl_01nl","gur_gop_al_emi_nl_01nl","ben_kat_al_ema_nl_01nl","mal_ban_al_fat_nl_01nl","dha_mol_al_ema_nl_03nl","ban_may_al_bra_nl_01nl","coc_mfc_wh_nl_01nl","grk_mfc_wh_nl_01nl","ban_may_al_bra_nl_02nl","bhi_tha_al_emi_nl_01nl","gur_sam_al_abr_nl_01nl","new_ham_al_glo_nl_01nl","kol_gab_3pl_g_01","hyd_dev_al_dro_nl_02nl","dha_kot_wh_nl_01nl","ind_las_al_bum_nl_01nl","kal_gur_wh_kl_nl_01nl","how_arg_al_wil_nl_01nl","ban_ban_al_ind_nl_01nl","ban_mal_al_ban_nl_01nl","kur_moh_al_pir_nl_01nl","bhi_mum_al_dro_nl_01nl","jab_mfc_wh_nl_01nl","kol_sal_al_dol_nl_01nl","how_san_al_emi_nl_01nl","del_bud_al_ban_nl_02nl","bhi_tha_al_ema_nl_01nl","kol_how_al_rak_nl_01nl","har_jha_al_fat_nl_01nl","kol_how_al_nex_nl_03nl","tir_ang_al_dol_nl_02nl"];
+            function getFac(){var p=location.pathname,m=p.match(/\/flo-lite\/([^\/?#]+)/i)||p.match(/\/([^\/]+)\/(?:desktop|mobile)(?:\/|$)/i);if(m)return decodeURIComponent(m[1]);var q=new URLSearchParams(location.search);return q.get("facility_id")||q.get("facilityId")||null;}
+            var id="TRACKING_ID_PLACEHOLDER";
+            if(!id)return;id=id.trim().toUpperCase();
+            var cTag=document.querySelector('meta[name="csrf-token"]'),cCook=document.cookie.match(/csrf-token=([^;]+)/),tok=cTag?cTag.content:(cCook?cCook[1]:"");
+            var cFac=getFac(),fList=cFac?[cFac].concat(facs.filter(f=>f!==cFac)):facs;
+            var fData=null,fFinal=null;
+            var d1=new Date();d1.setDate(d1.getDate()-60);var d2=new Date();d2.setDate(d2.getDate()+60);
+            var msg=document.createElement("div");msg.innerHTML="Searching across facilities & extracting Box Label. Please wait...";msg.style.cssText="position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:12px 24px;z-index:999999;border-radius:8px;font-family:sans-serif;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,0.3);";document.body.appendChild(msg);
+            var extractBoxLayer=function(t){
+                var p=t;try{var j=JSON.parse(t);if(j.payload&&j.payload.documents)p=j.payload.documents[0].data;}catch(e){}
+                var m=p.match(/\^FT190,540[^\r\n]*?\^FD([^,^\\]+),?([^\^]*)\^FS/);
+                if(m)return{box:m[1].trim(),layer:m[2].trim()};
+                var f=p.match(/\^FD((?:D|OSB|PB|NPG|TSB|FW|SIOC|BAG)[A-Z0-9.-]*),?([0-9A-Z]*)\^FS/);
+                return f?{box:f[1].trim(),layer:f[2].trim()}:{box:"Not Found",layer:"Not Found"};
+            };
+            for(let f of fList){
+                try{
+                    var h={"accept":"application/json","content-type":"application/json","x-facility-id":f};
+                    if(tok)h["csrf-token"]=tok;
+                    var sId=id;
+                    if(!id.match(/^S\d+$/)){
+                        var ph=Object.assign({},h);ph["x-search-type"]="shipments";
+                        var py={"range_filters":[{"type":"dispatch_by_date","from":d1.toISOString(),"to":d2.toISOString()},{"type":"updated_at","from":d1.toISOString(),"to":d2.toISOString()}],"sorting":{"sort_asc":true,"sorting_field":"dispatch_by_date"},"table_filters":{"tracking_id":id},"pagination":{"page":1,"page_size":10}};
+                        var sr=await fetch("http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/search/shipments",{method:"POST",headers:ph,body:JSON.stringify(py),credentials:"include"});
+                        if(sr.status===401||sr.status===403)continue;if(!sr.ok)continue;
+                        var sd=await sr.json();
+                        if(sd?.data?.shipments_list?.length>0){sId=sd.data.shipments_list[0].shipment_id;}else{continue;}
+                    }
+                    var dr=await fetch("http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/search/shipments/detail?shipment_id="+sId,{headers:h,method:"GET",credentials:"include"});
+                    if(dr.status===401||dr.status===403)continue;
+                    if(dr.ok){
+                        var dd=await dr.json();
+                        if(dd){
+                            fData=dd;fFinal=f;
+                            try{
+                                var lr=await fetch("http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/document_reprint",{method:"POST",headers:h,credentials:"include",body:JSON.stringify({shipment_display_id:sId,warehouse_id:f,extra_params:{only_label:true}})});
+                                if(lr.ok){
+                                    var labelRes=await lr.text();
+                                    var parsed=extractBoxLayer(labelRes);
+                                    fData.extracted_box=parsed.box;
+                                    fData.extracted_layer=parsed.layer;
+                                }else{fData.extracted_box="API Error";fData.extracted_layer="API Error";}
+                            }catch(err){fData.extracted_box="Fetch Failed";fData.extracted_layer="Fetch Failed";}
+                            break;
+                        }
+                    }
+                }catch(e){continue;}
+            }
+            msg.remove();
+            if(fData){
+                var u="https://script.google.com/a/macros/flipkart.com/s/AKfycbzwaSjLDJIh9_GfsdKqZ3sBT2qlyl1hVQW5lqnGoyXTFE7CrRyVfky15eeYQlygU28I/exec";
+                window.location.href=u+"?fac="+encodeURIComponent(fFinal)+"&data="+encodeURIComponent(JSON.stringify(fData));
+            }else{alert("Shipment details not found.");}
+          })();
+          EOF
+
           cat << 'EOF' > app/src/main/java/com/flipkart/ldaudit/MainActivity.java
           package com.flipkart.ldaudit;
 
@@ -120,10 +182,10 @@ jobs:
           import android.widget.ProgressBar;
           import android.widget.RelativeLayout;
           import android.widget.Toast;
+          import java.io.InputStream;
 
           import com.google.mlkit.vision.codescanner.GmsBarcodeScanner;
           import com.google.mlkit.vision.codescanner.GmsBarcodeScanning;
-          import com.google.mlkit.vision.barcode.common.Barcode;
 
           public class MainActivity extends Activity {
 
@@ -132,11 +194,22 @@ jobs:
               private EditText trackingInput;
               private Button submitBtn, scanBtn, coachingDoneBtn;
               private ProgressBar progressBar;
+              private String bookmarkletJs = "";
               private static final String DEFAULT_URL = "http://10.24.1.71/flo-lite";
 
               @Override
               protected void onCreate(Bundle savedInstanceState) {
                   super.onCreate(savedInstanceState);
+
+                  try {
+                      InputStream is = getAssets().open("script.js");
+                      byte[] buffer = new byte[is.available()];
+                      is.read(buffer);
+                      is.close();
+                      bookmarkletJs = new String(buffer, "UTF-8");
+                  } catch (Exception e) {
+                      Toast.makeText(this, "Failed to load script", Toast.LENGTH_SHORT).show();
+                  }
 
                   RelativeLayout rootLayout = new RelativeLayout(this);
 
@@ -215,7 +288,7 @@ jobs:
                   
                   scanBtn.setOnClickListener(v -> {
                       scanner.startScan()
-                          .addOnSuccessListener((Barcode barcode) -> {
+                          .addOnSuccessListener(barcode -> {
                               String scannedCode = barcode.getRawValue();
                               if(scannedCode != null) {
                                   trackingInput.setText(scannedCode);
@@ -311,83 +384,35 @@ jobs:
                   }
 
                   Toast.makeText(this, "Searching Details...", Toast.LENGTH_SHORT).show();
-
-                  String jsCode = "(async function(){" +
-                          "var facs=['nad_har_wh_kl_nl_01nl','gur_san_wh_nl_01nl','pit_dha_al_swa_nl_01nl','nag_rtm_wh_nl_01nl','frk_bts','cbe_oth_01','bhi_pad_wh_nl_01nl','ran_mfc_wh_nl_01nl','vij_ved_wh_nl_01nl','malur_bts','ind_teh_wh_nl_01nl','bhi_vas_wh_nl_01nl','ban_ven_wh_nl_01nl','guw_kam_wh_nl_02nl','luc_has_wh_nl_02nl','ulub_bts','chn_tvr_04','hyderabad_medchal_01','ahm_khe_wh_nl_01nl','lud_kha_wh_nl_01nl','jai_san_wh_nl_01nl','jal_bin_wh_nl_01nl','bhu_pan_wh_nl_01nl','pat_haj_wh_nl_01nl','pun_bad_wh_nl_01nl','bhi_sse_wh_nl_01nl','var_mfc_wh_nl_01nl','rai_dha_wh_nl_02nl','gur_bho_al_adi_nl_01nl','sur_mfc_wh_nl_01nl','gur_gop_al_emi_nl_01nl','ben_kat_al_ema_nl_01nl','mal_ban_al_fat_nl_01nl','dha_mol_al_ema_nl_03nl','ban_may_al_bra_nl_01nl','coc_mfc_wh_nl_01nl','grk_mfc_wh_nl_01nl','ban_may_al_bra_nl_02nl','bhi_tha_al_emi_nl_01nl','gur_sam_al_abr_nl_01nl','new_ham_al_glo_nl_01nl','kol_gab_3pl_g_01','hyd_dev_al_dro_nl_02nl','dha_kot_wh_nl_01nl','ind_las_al_bum_nl_01nl','kal_gur_wh_kl_nl_01nl','how_arg_al_wil_nl_01nl','ban_ban_al_ind_nl_01nl','ban_mal_al_ban_nl_01nl','kur_moh_al_pir_nl_01nl','bhi_mum_al_dro_nl_01nl','jab_mfc_wh_nl_01nl','kol_sal_al_dol_nl_01nl','how_san_al_emi_nl_01nl','del_bud_al_ban_nl_02nl','bhi_tha_al_ema_nl_01nl','kol_how_al_rak_nl_01nl','har_jha_al_fat_nl_01nl','kol_how_al_nex_nl_03nl','tir_ang_al_dol_nl_02nl'];" +
-                          "function getFac(){var p=location.pathname,m=p.match(/\\/flo-lite\\/([^\\/?#]+)/i)||p.match(/\\/([^\\/]+)\\/(?:desktop|mobile)(?:\\/|$)/i);if(m)return decodeURIComponent(m[1]);var q=new URLSearchParams(location.search);return q.get('facility_id')||q.get('facilityId')||null;}" +
-                          "var id='" + rawId.replace("'", "\\'") + "';" +
-                          "if(!id)return;id=id.trim().toUpperCase();" +
-                          "var cTag=document.querySelector('meta[name=\"csrf-token\"]'),cCook=document.cookie.match(/csrf-token=([^;]+)/),tok=cTag?cTag.content:(cCook?cCook[1]:'');" +
-                          "var cFac=getFac(),fList=cFac?[cFac].concat(facs.filter(f=>f!==cFac)):facs;" +
-                          "var fData=null,fFinal=null;" +
-                          "var d1=new Date();d1.setDate(d1.getDate()-60);var d2=new Date();d2.setDate(d2.getDate()+60);" +
-                          "var msg=document.createElement('div');msg.innerHTML='Searching across facilities & extracting Box Label. Please wait...';msg.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:12px 24px;z-index:999999;border-radius:8px;font-family:sans-serif;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,0.3);';document.body.appendChild(msg);" +
-                          "var extractBoxLayer=function(t){" +
-                          "var p=t;try{var j=JSON.parse(t);if(j.payload&&j.payload.documents)p=j.payload.documents[0].data;}catch(e){}" +
-                          "var m=p.match(/\\^FT190,540[^\\r\\n]*?\\^FD([^,^\\\\]+),?([^\\^]*)\\^FS/);" +
-                          "if(m)return{box:m[1].trim(),layer:m[2].trim()};" +
-                          "var f=p.match(/\\^FD((?:D|OSB|PB|NPG|TSB|FW|SIOC|BAG)[A-Z0-9.-]*),?([0-9A-Z]*)\\^FS/);" +
-                          "return f?{box:f[1].trim(),layer:f[2].trim()}:{box:'Not Found',layer:'Not Found'};" +
-                          "};" +
-                          "for(let f of fList){" +
-                          "try{" +
-                          "var h={'accept':'application/json','content-type':'application/json','x-facility-id':f};" +
-                          "if(tok)h['csrf-token']=tok;" +
-                          "var sId=id;" +
-                          "if(!id.match(/^S\\d+$/)){" +
-                          "var ph=Object.assign({},h);ph['x-search-type']='shipments';" +
-                          "var py={'range_filters':[{'type':'dispatch_by_date','from':d1.toISOString(),'to':d2.toISOString()},{'type':'updated_at','from':d1.toISOString(),'to':d2.toISOString()}],'sorting':{'sort_asc':true,'sorting_field':'dispatch_by_date'},'table_filters':{'tracking_id':id},'pagination':{'page':1,'page_size':10}};" +
-                          "var sr=await fetch('http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/search/shipments',{method:'POST',headers:ph,body:JSON.stringify(py),credentials:'include'});" +
-                          "if(sr.status===401||sr.status===403)continue;" +
-                          "if(!sr.ok)continue;" +
-                          "var sd=await sr.json();" +
-                          "if(sd?.data?.shipments_list?.length>0){sId=sd.data.shipments_list[0].shipment_id;}else{continue;}" +
-                          "}" +
-                          "var dr=await fetch('http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/search/shipments/detail?shipment_id='+sId,{headers:h,method:'GET',credentials:'include'});" +
-                          "if(dr.status===401||dr.status===403)continue;" +
-                          "if(dr.ok){" +
-                          "var dd=await dr.json();if(dd){fData=dd;fFinal=f;" +
-                          "try{" +
-                          "var lr=await fetch('http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/document_reprint',{method:'POST',headers:h,credentials:'include',body:JSON.stringify({shipment_display_id:sId,warehouse_id:f,extra_params:{only_label:true}})});" +
-                          "if(lr.ok){var labelRes=await lr.text();var parsed=extractBoxLayer(labelRes);fData.extracted_box=parsed.box;fData.extracted_layer=parsed.layer;}" +
-                          "else{fData.extracted_box='API Error';fData.extracted_layer='API Error';}" +
-                          "}catch(err){fData.extracted_box='Fetch Failed';fData.extracted_layer='Fetch Failed';}" +
-                          "break;" +
-                          "}}" +
-                          "}catch(e){continue;}" +
-                          "}" +
-                          "msg.remove();" +
-                          "if(fData){" +
-                          "var u='https://script.google.com/a/macros/flipkart.com/s/AKfycbzwaSjLDJIh9_GfsdKqZ3sBT2qlyl1hVQW5lqnGoyXTFE7CrRyVfky15eeYQlygU28I/exec';" +
-                          "window.location.href=u+'?fac='+encodeURIComponent(fFinal)+'&data='+encodeURIComponent(JSON.stringify(fData));" +
-                          "}else{alert('Shipment details not found.');}" +
-                          "})();";
-
-                      webView.evaluateJavascript(jsCode, null);
-                  }
                   
-                  @Override
-                  public void onBackPressed() {
-                      String currentUrl = webView.getUrl();
-                      if (currentUrl != null && (currentUrl.contains("script.google.com") || currentUrl.contains("script.googleusercontent.com"))) {
-                          trackingBoxLayout.setVisibility(View.VISIBLE);
-                          coachingDoneBtn.setVisibility(View.GONE);
-                          
-                          RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) webView.getLayoutParams();
-                          params.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
-                          webView.setLayoutParams(params);
-
-                          webView.loadUrl(DEFAULT_URL);
-                          trackingInput.setText("");
-                      } else if (webView.canGoBack()) {
-                          webView.goBack();
-                      } else {
-                          super.onBackPressed();
-                      }
+                  if (bookmarkletJs != null && !bookmarkletJs.isEmpty()) {
+                      String finalJs = bookmarkletJs.replace("TRACKING_ID_PLACEHOLDER", rawId);
+                      webView.evaluateJavascript(finalJs, null);
                   }
               }
-              EOF
-              sed -i 's/^              //' app/src/main/java/com/flipkart/ldaudit/MainActivity.java
+              
+              @Override
+              public void onBackPressed() {
+                  String currentUrl = webView.getUrl();
+                  if (currentUrl != null && (currentUrl.contains("script.google.com") || currentUrl.contains("script.googleusercontent.com"))) {
+                      trackingBoxLayout.setVisibility(View.VISIBLE);
+                      coachingDoneBtn.setVisibility(View.GONE);
+                      
+                      RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) webView.getLayoutParams();
+                      params.addRule(RelativeLayout.BELOW, trackingBoxLayout.getId());
+                      webView.setLayoutParams(params);
+
+                      webView.loadUrl(DEFAULT_URL);
+                      trackingInput.setText("");
+                  } else if (webView.canGoBack()) {
+                      webView.goBack();
+                  } else {
+                      super.onBackPressed();
+                  }
+              }
+          }
+          EOF
+          sed -i 's/^          //' app/src/main/java/com/flipkart/ldaudit/MainActivity.java
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
