@@ -59,8 +59,8 @@ jobs:
                   applicationId "com.flipkart.ldaudit"
                   minSdk 23
                   targetSdk 34
-                  versionCode 8
-                  versionName "8.0"
+                  versionCode 9
+                  versionName "9.0"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -121,11 +121,9 @@ jobs:
           import android.widget.RelativeLayout;
           import android.widget.Toast;
 
-          import com.google.android.gms.common.moduleinstall.ModuleInstall;
-          import com.google.android.gms.common.moduleinstall.ModuleInstallClient;
-          import com.google.android.gms.common.moduleinstall.ModuleInstallRequest;
           import com.google.mlkit.vision.codescanner.GmsBarcodeScanner;
           import com.google.mlkit.vision.codescanner.GmsBarcodeScanning;
+          import com.google.mlkit.vision.barcode.common.Barcode;
 
           public class MainActivity extends Activity {
 
@@ -162,7 +160,7 @@ jobs:
                   trackingInput.setLayoutParams(inputParams);
 
                   scanBtn = new Button(this);
-                  scanBtn.setText("\uD83D\uDCF7 SCAN"); 
+                  scanBtn.setText("SCAN"); 
                   scanBtn.setBackgroundColor(Color.parseColor("#EAB308"));
                   scanBtn.setTextColor(Color.BLACK);
                   LinearLayout.LayoutParams scanParams = new LinearLayout.LayoutParams(
@@ -211,19 +209,13 @@ jobs:
                   setContentView(rootLayout);
                   setupWebView();
                   
-                  ModuleInstallClient moduleInstallClient = ModuleInstall.getClient(this);
-                  ModuleInstallRequest moduleInstallRequest = ModuleInstallRequest.newBuilder()
-                          .addApi(GmsBarcodeScanning.getClient(this))
-                          .build();
-                  moduleInstallClient.installModules(moduleInstallRequest);
-
                   GmsBarcodeScanner scanner = GmsBarcodeScanning.getClient(this);
 
                   submitBtn.setOnClickListener(v -> runBookmarkletScript());
                   
                   scanBtn.setOnClickListener(v -> {
                       scanner.startScan()
-                          .addOnSuccessListener(barcode -> {
+                          .addOnSuccessListener((Barcode barcode) -> {
                               String scannedCode = barcode.getRawValue();
                               if(scannedCode != null) {
                                   trackingInput.setText(scannedCode);
