@@ -53,8 +53,8 @@ jobs:
                   applicationId "com.flipkart.ldaudit"
                   minSdk 23
                   targetSdk 34
-                  versionCode 5
-                  versionName "5.0"
+                  versionCode 6
+                  versionName "6.0"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -321,7 +321,14 @@ jobs:
                           "var cFac=getFac(),fList=cFac?[cFac].concat(facs.filter(f=>f!==cFac)):facs;" +
                           "var fData=null,fFinal=null;" +
                           "var d1=new Date();d1.setDate(d1.getDate()-60);var d2=new Date();d2.setDate(d2.getDate()+60);" +
-                          "var msg=document.createElement('div');msg.innerHTML='Searching across facilities. Please wait...';msg.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:12px 24px;z-index:999999;border-radius:8px;font-family:sans-serif;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,0.3);';document.body.appendChild(msg);" +
+                          "var msg=document.createElement('div');msg.innerHTML='Searching across facilities & extracting Box Label. Please wait...';msg.style.cssText='position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:12px 24px;z-index:999999;border-radius:8px;font-family:sans-serif;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,0.3);';document.body.appendChild(msg);" +
+                          "var extractBoxLayer=function(t){" +
+                          "var p=t;try{var j=JSON.parse(t);if(j.payload&&j.payload.documents)p=j.payload.documents[0].data;}catch(e){}" +
+                          "var m=p.match(/\\^FT190,540[^\\r\\n]*?\\^FD([^,^\\\\]+),?([^\\^]*)\\^FS/);" +
+                          "if(m)return{box:m[1].trim(),layer:m[2].trim()};" +
+                          "var f=p.match(/\\^FD((?:D|OSB|PB|NPG|TSB|FW|SIOC|BAG)[A-Z0-9.-]*),?([0-9A-Z]*)\\^FS/);" +
+                          "return f?{box:f[1].trim(),layer:f[2].trim()}:{box:'Not Found',layer:'Not Found'};" +
+                          "};" +
                           "for(let f of fList){" +
                           "try{" +
                           "var h={'accept':'application/json','content-type':'application/json','x-facility-id':f};" +
@@ -334,11 +341,19 @@ jobs:
                           "if(sr.status===401||sr.status===403)continue;" +
                           "if(!sr.ok)continue;" +
                           "var sd=await sr.json();" +
-                          "if(sd&&sd.data&&sd.data.shipments_list&&sd.data.shipments_list.length>0){sId=sd.data.shipments_list[0].shipment_id;}else{continue;}" +
+                          "if(sd?.data?.shipments_list?.length>0){sId=sd.data.shipments_list[0].shipment_id;}else{continue;}" +
                           "}" +
                           "var dr=await fetch('http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/search/shipments/detail?shipment_id='+sId,{headers:h,method:'GET',credentials:'include'});" +
                           "if(dr.status===401||dr.status===403)continue;" +
-                          "if(dr.ok){var dd=await dr.json();if(dd){fData=dd;fFinal=f;break;}}" +
+                          "if(dr.ok){" +
+                          "var dd=await dr.json();if(dd){fData=dd;fFinal=f;" +
+                          "try{" +
+                          "var lr=await fetch('http://10.24.1.71/flo-lite-routes-api/psd-authenticated-controller-routes/api/v1/document_reprint',{method:'POST',headers:h,credentials:'include',body:JSON.stringify({shipment_display_id:sId,warehouse_id:f,extra_params:{only_label:true}})});" +
+                          "if(lr.ok){var labelRes=await lr.text();var parsed=extractBoxLayer(labelRes);fData.extracted_box=parsed.box;fData.extracted_layer=parsed.layer;}" +
+                          "else{fData.extracted_box='API Error';fData.extracted_layer='API Error';}" +
+                          "}catch(err){fData.extracted_box='Fetch Failed';fData.extracted_layer='Fetch Failed';}" +
+                          "break;" +
+                          "}}" +
                           "}catch(e){continue;}" +
                           "}" +
                           "msg.remove();" +
