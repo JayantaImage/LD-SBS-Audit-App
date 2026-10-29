@@ -62,8 +62,8 @@ jobs:
                   applicationId "com.flipkart.ldaudit"
                   minSdk 23
                   targetSdk 34
-                  versionCode 10
-                  versionName "10.0"
+                  versionCode 11
+                  versionName "11.0"
               }
               compileOptions {
                   sourceCompatibility JavaVersion.VERSION_17
@@ -115,10 +115,11 @@ jobs:
             var msg=document.createElement("div");msg.innerHTML="Searching across facilities & extracting Box Label. Please wait...";msg.style.cssText="position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#000;color:#fff;padding:12px 24px;z-index:999999;border-radius:8px;font-family:sans-serif;font-size:14px;box-shadow:0 4px 6px rgba(0,0,0,0.3);";document.body.appendChild(msg);
             var extractBoxLayer=function(t){
                 var p=t;try{var j=JSON.parse(t);if(j.payload&&j.payload.documents)p=j.payload.documents[0].data;}catch(e){}
+                var isFragile=(p.includes("83MFDC,8387K0DC")||p.includes("83IFC7FFDC"));
                 var m=p.match(/\^FT190,540[^\r\n]*?\^FD([^,^\\]+),?([^\^]*)\^FS/);
-                if(m)return{box:m[1].trim(),layer:m[2].trim()};
+                if(m)return{box:m[1].trim(),layer:m[2].trim(),is_fragile:isFragile};
                 var f=p.match(/\^FD((?:D|OSB|PB|NPG|TSB|FW|SIOC|BAG)[A-Z0-9.-]*),?([0-9A-Z]*)\^FS/);
-                return f?{box:f[1].trim(),layer:f[2].trim()}:{box:"Not Found",layer:"Not Found"};
+                return f?{box:f[1].trim(),layer:f[2].trim(),is_fragile:isFragile}:{box:"Not Found",layer:"Not Found",is_fragile:isFragile};
             };
             for(let f of fList){
                 try{
@@ -146,8 +147,9 @@ jobs:
                                     var parsed=extractBoxLayer(labelRes);
                                     fData.extracted_box=parsed.box;
                                     fData.extracted_layer=parsed.layer;
-                                }else{fData.extracted_box="API Error";fData.extracted_layer="API Error";}
-                            }catch(err){fData.extracted_box="Fetch Failed";fData.extracted_layer="Fetch Failed";}
+                                    fData.is_fragile=parsed.is_fragile;
+                                }else{fData.extracted_box="API Error";fData.extracted_layer="API Error";fData.is_fragile=false;}
+                            }catch(err){fData.extracted_box="Fetch Failed";fData.extracted_layer="Fetch Failed";fData.is_fragile=false;}
                             break;
                         }
                     }
@@ -186,6 +188,7 @@ jobs:
 
           import com.google.mlkit.vision.codescanner.GmsBarcodeScanner;
           import com.google.mlkit.vision.codescanner.GmsBarcodeScanning;
+          import com.google.mlkit.vision.barcode.common.Barcode;
 
           public class MainActivity extends Activity {
 
@@ -288,7 +291,7 @@ jobs:
                   
                   scanBtn.setOnClickListener(v -> {
                       scanner.startScan()
-                          .addOnSuccessListener(barcode -> {
+                          .addOnSuccessListener((Barcode barcode) -> {
                               String scannedCode = barcode.getRawValue();
                               if(scannedCode != null) {
                                   trackingInput.setText(scannedCode);
